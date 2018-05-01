@@ -1,5 +1,5 @@
 public with sharing class MarkTest03 {
-	final static String regex = '(?m)@(.*)=(.+)';
+	final static String regex = '(?m)@(.+)=(.*)';
 		
 	public static void findMatches() {
 		String testString = 
@@ -7,7 +7,9 @@ public with sharing class MarkTest03 {
 			+ 'some stuff\n\n'
 			+ '@tag2=abc\n\n'
 			+ 'some more stuff\n\n'
-			+ '@jsonTag={"fieldName": "fieldValue"}';
+			+ '@jsonTag={"fieldName": "fieldValue"}\n'
+			+ '@emptyTag=\n'
+			+ '@tagWithValue=some information';
 
 		Pattern thePattern = Pattern.compile(regex); 
 		Matcher myMatcher = thePattern.matcher(testString);

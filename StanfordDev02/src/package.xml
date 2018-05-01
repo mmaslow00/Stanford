@@ -4,6 +4,7 @@
         <members>Email_Helper</members>
         <members>Email_HelperTest</members>
         <members>RIT_SupportEmailHandler</members>
+        <members>MarkTest03</members>
         <name>ApexClass</name>
     </types>
     <version>38.0</version>
