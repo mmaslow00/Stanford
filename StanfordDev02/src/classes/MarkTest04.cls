@@ -1,5 +1,5 @@
 public with sharing class MarkTest04 {
-	final static String regex = '(?m)@([^\\s]+)=(.+)|@([^\\s]+)';
+	final static String regex = '@([\\w-]+)+(?:(?:=|\\s?=\\s?)([\\w\\d,_-]+|\\{.*|\\[.*))?';
 		
 	public static void findMatches() {
 		String testString = 
@@ -14,14 +14,8 @@ public with sharing class MarkTest04 {
 		Pattern thePattern = Pattern.compile(regex); 
 		Matcher myMatcher = thePattern.matcher(testString);
 		while(myMatcher.find()) {
-			String tagValue = null;
 			String tagName = myMatcher.group(1);
-			if(tagName == null) {
-				tagName = myMatcher.group(3);
-			}
-			else {
-				tagValue = myMatcher.group(2);
-			}
+			String tagValue = myMatcher.group(2);
 			System.debug('Found Match - tagName: ' + tagName + ' - tagValue: ' + tagValue);
 		}
 	}				
