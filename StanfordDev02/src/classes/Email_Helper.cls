@@ -1,4 +1,5 @@
 public with sharing class Email_Helper {
+	private static final String tagRegex = '@([\\w-]+)+(?:(?:=|\\s?=\\s?)([\\w\\d,_-]+|\\{.*|\\[.*))?';
 
 /////////////////// UTILITY FUNCTIONS ////////////////////////
 
@@ -305,5 +306,14 @@ public with sharing class Email_Helper {
         }
         public List<Contact> primaryList;
         public List<Contact> alternateList;
+    }
+    public static Map<String, String> getTags(String message) {
+    	Map<String, String> returnMap = new Map<String, String>();
+		Pattern tagPattern = Pattern.compile(tagRegex); 
+		Matcher myMatcher = tagPattern.matcher(message);
+		while(myMatcher.find()) {
+			returnMap.put(myMatcher.group(1), myMatcher.group(2));
+		}
+		return returnMap;    	
     }
 }
