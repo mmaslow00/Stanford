@@ -226,7 +226,7 @@ public with sharing class Email_Helper {
 	public static Case getCaseByCaseNumber (String caseNumber) {
 		// Search for a case number in the content and then return the Case object
 		// We found a match, lets see if it is valid
-		List<Case> matchingCases = [SELECT Id, caseNumber, subject, status FROM Case WHERE CaseNumber=:caseNumber];
+		List<Case> matchingCases = [SELECT Id, caseNumber, subject, status, Contact.FirstName, Contact.LastName, Contact.Email FROM Case WHERE CaseNumber=:caseNumber];
 		if (matchingCases.size()==1) {
 			Case c = matchingCases.get(0);
 			system.debug('** Returning a preexisting case: ' + c.CaseNumber);
@@ -296,6 +296,7 @@ public with sharing class Email_Helper {
 		return result.stripHtmlTags();
 	}
 
+	
     public class ContactsWithEmail {
         public ContactsWithEmail(String emailAddr) {
             primaryList = [
@@ -315,5 +316,13 @@ public with sharing class Email_Helper {
 			returnMap.put(myMatcher.group(1), myMatcher.group(2));
 		}
 		return returnMap;    	
+    }
+    public static String removeTags(String message) {
+		Pattern tagPattern = Pattern.compile(tagRegex); 
+		Matcher myMatcher = tagPattern.matcher(message);
+		while(myMatcher.find()) {
+			message = message.replace(myMatcher.group(0), '');
+		}
+		return message;
     }
 }

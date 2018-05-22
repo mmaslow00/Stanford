@@ -46,45 +46,39 @@ public with sharing class RIT_SupportResponseEmails {
     	
     	return returnMessage;
     }
-    /*
-    private static Messaging.SingleEmailMessage addAttachments(Messaging.InboundEmail email) {
-		List<Messaging.Inboundemail.TextAttachment> tAttachments = email.textAttachments;
-		List<Messaging.Inboundemail.BinaryAttachment> bAttachments = email.BinaryAttachments;
-		List<Attachment> newAttachments = new List<Attachment>();
-		if (tAttachments != null) {
-			for (Messaging.Inboundemail.TextAttachment t:tAttachments) {
-				System.debug('==> Found text attachment: ' + t.fileName);
-				Attachment a = new Attachment(
-					Body = Blob.valueOf(t.body),
-					Name = t.fileName,
-					ParentId = newEmailId,
-					ContentType = t.mimeTypeSubType
-				);
-				newAttachments.add(a);
+    public static Messaging.SingleEmailMessage caseOpened(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
+    	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
+    	returnMessage.setToAddresses(new String[]{theCase.Contact.Email});
+    	returnMessage.setReplyTo(emailReceived.fromAddress);
+    	returnMessage.setSubject(emailReceived.subject);
+    	
+		String reply = RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' +
+		Email_Helper.removeTags(messageReceived);
+
+    	returnMessage.setPlainTextBody(reply);
+    	List<Messaging.EmailFileAttachment> outAttachments = new List<Messaging.EmailFileAttachment>();
+    	if(emailReceived.BinaryAttachments != null) { 
+			for(Messaging.Inboundemail.BinaryAttachment ba : emailReceived.BinaryAttachments) {    	
+	        	Messaging.EmailFileAttachment attach = new Messaging.EmailFileAttachment();
+	        	attach.body = ba.Body;
+	        	attach.fileName = ba.fileName;
+	        	attach.ContentType = ba.mimeTypeSubType;
+	        	outAttachments.add(attach);
 			}
-		}
-		if (bAttachments != null) {
-			for (Messaging.Inboundemail.BinaryAttachment b:bAttachments) {
-				System.debug('==> Found binary attachment: ' + b.fileName);
-				Attachment a = new Attachment(
-					Body = b.body,
-					Name = b.fileName,
-					ParentId = newEmailId,
-					ContentType = b.mimeTypeSubType
-				);
-				newAttachments.add(a);
+    	}
+    	if(emailReceived.TextAttachments != null) {
+			for(Messaging.Inboundemail.TextAttachment ta : emailReceived.TextAttachments) {    	
+	        	Messaging.EmailFileAttachment attach = new Messaging.EmailFileAttachment();
+	        	attach.body = Blob.valueOf(ta.Body);
+	        	attach.fileName = ta.fileName;
+	        	attach.ContentType = ta.mimeTypeSubType;
+	        	outAttachments.add(attach);
 			}
-		}
-		if (newAttachments.size()>0) {
-			email.setFileAttachments(new Messaging.EmailFileAttachment[] {efa});
-		}
+    	}
+    	if( ! outAttachments.isEmpty()) {
+    		returnMessage.setFileAttachments(outAttachments);
+    	}
+    	
+    	return returnMessage;
     }
-    
-        List<Messaging.InboundEmail.BinaryAttachment> attachmentList = new List<Messaging.InboundEmail.BinaryAttachment>();
-        attachmentList.add(attach);
-        email.binaryAttachments = attachmentList;
-    
-    
-    
-    */
 }

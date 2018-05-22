@@ -1,29 +1,36 @@
 global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 	public static final String endNewMessageIndicator = '====== Please type any reply above this line ======';    
-	public static final String supportTeamAddress = 'mmaslow00+supteam@gmail.com';
+	public static String supportTeamAddress = 'mmaslow00+supteam@gmail.com';
+	private Case theCase;
+	private Messaging.InboundEmail emailReceived;
 	private String fullMessage;
 	private String newMessage;
     global Messaging.InboundEmailResult handleInboundEmail(Messaging.InboundEmail email, Messaging.InboundEnvelope envelope) {
-    	fullMessage = Email_Helper.makeDescription(email);
+    	emailReceived = email;
+    	fullMessage = Email_Helper.makeDescription(emailReceived);
     	Integer endPos = fullMessage.indexOf(endNewMessageIndicator);
+    	System.debug('endPos: ' + endPos);
     	if(endPos < 0) {
     		newMessage = fullMessage;
     	}
     	else {
     		newMessage = fullMessage.substring(0, endPos - 1);
     	}
-		Case theCase = Email_Helper.getExistingCase(email);
+		theCase = Email_Helper.getExistingCase(emailReceived);
 		if(theCase == null) {
-			theCase = createNewCase(email);
-			theCase = [select Contact.FirstName, Contact.LastName, CaseNumber from Case where Id = :theCase.Id];
-			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, email, theCase);
+			theCase = createNewCase();
+			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
 			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
-			
 		}
 		else {
 			Map<String, String> tagMap = Email_Helper.getTags(newMessage);
 			if(tagMap.keySet().contains('open')) {
-				openCase();	
+				if(theCase.Status == 'Open') {
+					caseAlreadyOpened();
+				}
+				else {
+					openCase();	
+				}
 			}
 		}
         Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
@@ -35,14 +42,14 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		
     }
     
-    private Case createNewCase(Messaging.InboundEmail email) {
+    private Case createNewCase() {
 		Case newCase = New Case(
 			Priority = null,
-			Subject = Email_Helper.cleanUpSubject(email.subject),
-			Server_Message__c = email.htmlBody
+			Subject = Email_Helper.cleanUpSubject(emailReceived.subject),
+			Server_Message__c = emailReceived.htmlBody
 		);
-		newCase.suppliedEmail = email.fromAddress;
-		newCase.suppliedName = email.fromName;
+		newCase.suppliedEmail = emailReceived.fromAddress;
+		newCase.suppliedName = emailReceived.fromName;
   		newCase.Notify_Contact_On_Creation__c = False;							//FALSE TO prevent looping with out-of-office replies.
 		newCase.Type = 'Other';													
 		newCase.description = fullMessage;
@@ -68,6 +75,22 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		return newCase;
     }
     private void openCase() {
+    	List<User> usrList = [
+    		select Id, Name, Email
+    		from User
+    		where Email = :emailReceived.fromAddress
+    	];
+    	if(usrList.size() == 1) {
+    		theCase.Status = 'Open';
+    		theCase.OwnerId = usrList.get(0).Id;
+    		update theCase;
+    		if( ! String.isBlank(newMessage)) {
+				Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
+				Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+    		}
+    	}
+    }
+    private void caseAlreadyOpened() {
     	
     }
 }
