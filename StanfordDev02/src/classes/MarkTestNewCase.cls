@@ -3,7 +3,7 @@ public with sharing class MarkTestNewCase {
         Messaging.InboundEmail email = new Messaging.InboundEmail();
         Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
 
- 		String sSubject = 'Help 02!';
+ 		String sSubject = 'Help!';
 		String sBody = 
 			'Hi, \n\n' + 
 			'I am hoping you can help me gain access to REDCAP, I am a temporary employee filling in for Ni Deng working with xxxx  xxx. ' +

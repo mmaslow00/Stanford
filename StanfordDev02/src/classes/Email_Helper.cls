@@ -226,9 +226,13 @@ public with sharing class Email_Helper {
 	public static Case getCaseByCaseNumber (String caseNumber) {
 		// Search for a case number in the content and then return the Case object
 		// We found a match, lets see if it is valid
-		List<Case> matchingCases = [SELECT Id, caseNumber, subject, status, Contact.FirstName, Contact.LastName, Contact.Email FROM Case WHERE CaseNumber=:caseNumber];
+		List<Case> matchingCases = [
+			SELECT Id, caseNumber, subject, status, Description, Contact.FirstName, Contact.LastName, Contact.Email, Owner.Name 
+			FROM Case WHERE CaseNumber=:caseNumber
+		];
 		if (matchingCases.size()==1) {
 			Case c = matchingCases.get(0);
+			System.debug('theCase: ' + c);
 			system.debug('** Returning a preexisting case: ' + c.CaseNumber);
 			return c;
 		} else {

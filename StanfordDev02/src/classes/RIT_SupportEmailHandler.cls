@@ -18,12 +18,18 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		theCase = Email_Helper.getExistingCase(emailReceived);
 		if(theCase == null) {
 			theCase = createNewCase();
-			theCase = [select Id, CaseNumber, Contact.FirstName, Contact.LastName from Case where Id=:theCase.Id];
+			theCase = [select Id, CaseNumber, Description, Contact.FirstName, Contact.LastName from Case where Id=:theCase.Id];
 			Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '0');
 			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
 			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id);
 			insert comment;
 			addAttachments(notificationEmail);
+			
+			//Don't know why this is necessary, but description on saved case is null without it.
+			//I suspect an insert trigger is messing with the description, but updates don't
+			Case refreshedCase = new Case(Id=theCase.Id, Description=theCase.Description);
+			update refreshedCase;
+			
 			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
 		}
 		else {
@@ -57,7 +63,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
   		newCase.Notify_Contact_On_Creation__c = False;							//FALSE TO prevent looping with out-of-office replies.
 		newCase.Type = 'Other';													
 		newCase.description = fullMessage;
-	
+		
 		//If there is an existing contact, lets associate it.  This is automatically done by the Web-to-Case and Email-To-Case 
 		//functionality, but in this custom email handler, we need to do it.
 
@@ -99,7 +105,8 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     	}
     }
     private void caseAlreadyOpened() {
-    	
+		Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseAlreadyOpened(newMessage, emailReceived, theCase);
+		Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
     }
     private void addAttachments(Messaging.SingleEmailMessage message) {
 		if(message.getFileAttachments() != null) {

@@ -1,9 +1,9 @@
 public with sharing class RIT_SupportResponseEmails {
-    public static Messaging.SingleEmailMessage openCase(String messageReceived, Messaging.InboundEmail emailReceived, Case newCase) {
+    public static Messaging.SingleEmailMessage openCase(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
     	returnMessage.setReplyTo(RIT_SupportEmailHandler.supportTeamAddress);
-    	returnMessage.setSubject(emailReceived.subject + ' - ' + newCase.CaseNumber);
+    	returnMessage.setSubject(emailReceived.subject + ' - ' + theCase.CaseNumber);
     	
     	return null;
     }
@@ -79,6 +79,32 @@ public with sharing class RIT_SupportResponseEmails {
     		returnMessage.setFileAttachments(outAttachments);
     	}
     	
+    	return returnMessage;
+    }
+    public static Messaging.SingleEmailMessage caseAlreadyOpened(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
+    	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
+    	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
+    	returnMessage.setReplyTo(RIT_SupportEmailHandler.supportTeamAddress);
+    	returnMessage.setSubject(theCase.CaseNumber + ' Case Already Taken By ' + theCase.Owner.Name);
+    	
+    	List<User> usrList = [
+    		select Id, Name, Email
+    		from User
+    		where Email = :emailReceived.fromAddress
+    	];
+    	String reply = '';
+    	if(usrList.size() == 1) {
+    		reply = 'Hi ' + usrList.get(0).Name + '\n\n';
+    	}
+    	reply += 'This case was already opened by ' + theCase.Owner.Name + '.\n\n' +
+    		'Your comments have NOT been added to the case.\n\n' +
+    		'To add comments please use Salesforce.\n\n' +
+    		'----------------------------------------\n\n' +
+    		messageReceived + '\n\n' +
+    		'----------------------------------------\n\n' +
+    		theCase.Description;
+    	
+    	returnMessage.plainTextBody = reply;
     	return returnMessage;
     }
 }

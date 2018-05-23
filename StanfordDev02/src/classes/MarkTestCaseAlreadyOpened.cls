@@ -1,4 +1,4 @@
-public with sharing class MarkTestOpenCase {
+public with sharing class MarkTestCaseAlreadyOpened {
     public static void test01() {
         Messaging.InboundEmail email = new Messaging.InboundEmail();
         Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
@@ -13,26 +13,13 @@ public with sharing class MarkTestOpenCase {
 			'Be aware you should use the SUNet ID and not the email address.\n\n' +
 			'Hope that helps,\n' + 
 			'All the best\n\n' +
-			'-Alvaro\n\n' +
-			RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' +
-			'more stuff';
+			'-Alvaro';
 
         email.subject = sSubject;
-		email.toAddresses = new String[]{'mmaslow00+supteam@gmail.com'};
+		email.toAddresses = new String[]{'mmaslow00@gmail.com'};
         email.plainTextBody = sBody;
         env.fromAddress = 'mmaslow00@gmail.com';
         email.fromAddress = 'mmaslow00@gmail.com';
-        
-        StaticResource sr = [select Body, ContentType from StaticResource where Name='DocuSignLogo'];
-        Messaging.InboundEmail.BinaryAttachment attach = new Messaging.InboundEmail.BinaryAttachment();
-        attach.body = sr.Body;
-        attach.fileName = 'Test Binary Attachment';
-        attach.mimeTypeSubType = sr.ContentType;
-        
-        List<Messaging.InboundEmail.BinaryAttachment> attachmentList = new List<Messaging.InboundEmail.BinaryAttachment>();
-        attachmentList.add(attach);
-        email.binaryAttachments = attachmentList;
- 
         RIT_SupportEmailHandler emailServObj = new RIT_SupportEmailHandler();
         Messaging.Inboundemailresult result = emailServObj.handleInboundEmail(email, env);
     }
