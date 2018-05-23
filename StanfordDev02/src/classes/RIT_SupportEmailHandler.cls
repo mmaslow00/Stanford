@@ -9,8 +9,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     	emailReceived = email;
     	fullMessage = Email_Helper.makeDescription(emailReceived);
     	Integer endPos = fullMessage.indexOf(endNewMessageIndicator);
-    	System.debug('endPos: ' + endPos);
-    	if(endPos < 0) {
+    	if(endPos <= 0) {
     		newMessage = fullMessage;
     	}
     	else {
@@ -19,7 +18,12 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		theCase = Email_Helper.getExistingCase(emailReceived);
 		if(theCase == null) {
 			theCase = createNewCase();
+			theCase = [select Id, CaseNumber, Contact.FirstName, Contact.LastName from Case where Id=:theCase.Id];
+			Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '0');
 			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
+			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id);
+			insert comment;
+			addAttachments(notificationEmail);
 			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
 		}
 		else {
@@ -85,12 +89,33 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     		theCase.OwnerId = usrList.get(0).Id;
     		update theCase;
     		if( ! String.isBlank(newMessage)) {
+				CaseComment comment = new CaseComment(CommentBody=newMessage, ParentId=theCase.Id);
+				insert comment;
+				Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '1');
 				Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
+				addAttachments(notificationEmail);
 				Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
     		}
     	}
     }
     private void caseAlreadyOpened() {
     	
+    }
+    private void addAttachments(Messaging.SingleEmailMessage message) {
+		if(message.getFileAttachments() != null) {
+			List<Attachment>attachList = new List<Attachment>();
+			for(Messaging.EmailFileAttachment msgAttach : message.getFileAttachments()) {
+				Attachment attach = new Attachment(
+					ParentId = theCase.Id,
+					Body = msgAttach.Body,
+					Name = msgAttach.FileName,
+					ContentType = msgAttach.ContentType
+				);
+				attachList.add(attach);
+			}
+			if( ! attachList.isEmpty()) {
+				insert attachList;
+			}
+		}
     }
 }

@@ -49,7 +49,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage caseOpened(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{theCase.Contact.Email});
-    	returnMessage.setReplyTo(emailReceived.fromAddress);
+    	returnMessage.setReplyTo(RIT_SupportEmailHandler.supportTeamAddress);
     	returnMessage.setSubject(emailReceived.subject);
     	
 		String reply = RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' +
