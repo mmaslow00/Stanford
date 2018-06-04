@@ -4,7 +4,10 @@
         <members>Email_Helper</members>
         <members>Email_HelperTest</members>
         <members>RIT_SupportEmailHandler</members>
-        <members>MarkTest03</members>
+        <members>MarkTestCaseAlreadyOpened</members>
+        <members>MarkTestNewCase</members>
+        <members>MarkTestOpenCase</members>
+        <members>RIT_SupportResponseEmails</members>
         <name>ApexClass</name>
     </types>
     <version>38.0</version>
