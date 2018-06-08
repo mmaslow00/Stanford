@@ -55,9 +55,11 @@ public with sharing class Utilities {
 			Set<Id> idsInGroup = new Set<Id>();
 			for(GroupMember grpMbr : [select userOrGroupId from GroupMember where GroupId in :groupIds]) {
 				if(grpMbr.userOrGroupId.getSobjectType() == User.sObjectType) {
+					//Id for user - add to user ids.
 					userIds.add(grpMbr.userOrGroupId);
 				}
 				else {
+					//Id for group - do recursive call to get users in group
 					Set<Id> grpSet = new Set<Id>();
 					grpSet.add(grpMbr.userOrGroupId);
 					userIds.addAll(getGroupMembers(grpSet));				
