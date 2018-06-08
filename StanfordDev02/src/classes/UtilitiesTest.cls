@@ -21,7 +21,7 @@ private class UtilitiesTest {
 		Group group1 = new Group(Name='Group1',Type='Regular');
 		Group group2 = new Group(Name='Group2',Type='Regular');
 		Group group3 = new Group(Name='Group3',Type='Regular');
-		Group queue1 = new Group(Name='Queue1',DeveloperName='Queue1',Type='Queue');
+		Group queue1 = new Group(Name='Queue1',Type='Queue');
 		groupList.add(group1);
 		groupList.add(group2);
 		groupList.add(group3);
@@ -49,7 +49,7 @@ private class UtilitiesTest {
 		mbrList.add(mbr6);
 		insert mbrList;
 		
-		Set<Id> queueUsers = Utilities.getUsersInQueue(queue1.DeveloperName);
+		Set<Id> queueUsers = Utilities.getUsersInQueue(queue1.Name);
 		System.assertEquals(3, queueUsers.size());
 		System.assert(queueUsers.contains(user1.Id));
 		System.assert(queueUsers.contains(user2.Id));

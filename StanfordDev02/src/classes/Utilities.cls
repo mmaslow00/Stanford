@@ -5,7 +5,7 @@ public with sharing class Utilities {
 	
 	Author: Mark Maslow - June 2018
 	
-	Input - Developer Name of queue
+	Input - Name of queue
 	Output - Set of user Ids of queue members
 	
 	Queues can contain individual users as well as public groups of users.
@@ -15,10 +15,10 @@ public with sharing class Utilities {
 		//Set to return
 		Set<Id> queueUsers = new Set<Id>();
 		
-		//Queue was passed by DevloperName - get Id
+		//Queue was passed by Name - get Id
 		
-		List<Group> groupIdList = [select Id from Group where Type = 'Queue' and DeveloperName = :queueName];
-		//Continue only if an Id for a queue with the passed DeveloperName was found. Otherwise, return empty set.
+		List<Group> groupIdList = [select Id from Group where Type = 'Queue' and Name = :queueName];
+		//Continue only if an Id for a queue with the passed Name was found. Otherwise, return empty set.
 		if( ! groupIdList.isEmpty()) {
 			Id groupId = groupIdList.get(0).Id;
 			
