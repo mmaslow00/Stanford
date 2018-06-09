@@ -10,7 +10,6 @@ public with sharing class Utilities {
 	
 	Queues can contain individual users as well as public groups of users.
 	This method will return all individual users as well as all users in public groups that are queue members.
-	
 */
 		//Set to return
 		Set<Id> queueUsers = new Set<Id>();
