@@ -227,7 +227,8 @@ public with sharing class Email_Helper {
 		// Search for a case number in the content and then return the Case object
 		// We found a match, lets see if it is valid
 		List<Case> matchingCases = [
-			SELECT Id, caseNumber, subject, status, Description, Contact.FirstName, Contact.LastName, Contact.Email, Owner.Name 
+			SELECT Id, caseNumber, subject, status, Description, Contact.FirstName, Contact.LastName, Contact.Email, 
+			Contact.Account.Name, OwnerId, Owner.Name, Total_Labor__c 
 			FROM Case WHERE CaseNumber=:caseNumber
 		];
 		if (matchingCases.size()==1) {
@@ -317,7 +318,7 @@ public with sharing class Email_Helper {
 		Pattern tagPattern = Pattern.compile(tagRegex); 
 		Matcher myMatcher = tagPattern.matcher(message);
 		while(myMatcher.find()) {
-			returnMap.put(myMatcher.group(1), myMatcher.group(2));
+			returnMap.put(myMatcher.group(1).toLowerCase(), myMatcher.group(2));
 		}
 		return returnMap;    	
     }

@@ -31,6 +31,15 @@ public with sharing class Utilities {
 		}
 		return queueUsers;
 	}
+	public static Set<Id> getUsersInQueue(Id queueId) {
+		//Create set and populate with user or group Ids that are queue members
+		Set<Id> groupMemberIds = new Set<Id>();
+		for(GroupMember mbr : [select UserOrGroupId from GroupMember where GroupId = :queueId]) {
+			groupMemberIds.add(mbr.UserOrGroupId);
+		}
+		//Get all group members
+		return getGroupMembers(groupMemberIds);
+	}
 	private static Set<Id> getGroupMembers(Set<Id> idList) {
 		//Add individual group members to userIds set.
 		//Add public group members to groupIds set.
@@ -71,16 +80,42 @@ public with sharing class Utilities {
 /*
 	Method getUserByEmail
 	
-	Author: Mark Maslow - June 2018
-	
 	Input - Email address of user
 	Output - If User with email exists, User with Id and Name, otherwise, null
 */
 		User usr;
-		List<User> userList = [select Id, Name from User where Email = :email];
+		List<User> userList = [select Id, Name, Alias from User where Email = :email];
 		if( ! userList.isEmpty() ) {
 			usr = userList.get(0);
 		}
 		return usr;
+	}
+/*
+	Method getUserByAlias
+	
+	Input - Alias of user
+	Output - If User with Alias exist, User with Id and Name, otherwise, null
+*/
+	public static User getUserByAlias(String alias) {
+		User usr;
+		List<User> userList = [select Id, Name from User where Alias = :alias];
+		if( ! userList.isEmpty() ) {
+			usr = userList.get(0);
+		}
+		return usr;
+	}
+/*
+	Method getQueueIdByName
+	
+	Input - Name of queue
+	Output - Id of queue, if queue exists, otherwise, null
+*/
+	public static Id getQueueIdByName(String queueName) {
+		Id groupId;
+		List<Group> groupIdList = [select Id from Group where Type = 'Queue' and Name = :queueName];
+		if( ! groupIdList.isEmpty()) {
+			groupId = groupIdList.get(0).Id;
+		}
+		return groupId; 
 	}
 }

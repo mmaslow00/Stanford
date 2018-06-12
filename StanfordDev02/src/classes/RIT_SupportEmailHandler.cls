@@ -1,11 +1,26 @@
+/*
+	RIT_SupportEmailHandler
+	
+	Author: Mark Maslow - June 2018
+
+	Handle support emails	
+*/
 global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
+	//Static variables used by helper class as well as this class.
 	public static final String endNewMessageIndicator = '====== Please type any reply above this line ======';    
 	public static List<String> supportTeamMembers = new List<String>();
 	public static String emailHandlerAddress;
+
+	//Instance variables to be populated and used in various methods, to avoid having to pass them
 	private Case theCase;
 	private Messaging.InboundEmail emailReceived;
 	private String fullMessage;
 	private String newMessage;
+
+	//Static initializer
+	//Get name of support queue and address of handler from custom setting.
+	//Then populate supportTeamMembers from queue.
+	//These static variables may be used by Email_Helper to send to team members or reply-to
 	static {
 		RIT_Support_Information__c supportInfo = RIT_Support_Information__c.getInstance(UserInfo.getProfileId());
 		emailHandlerAddress = supportInfo.RIT_Email_Handler_Address__c;		
@@ -16,8 +31,16 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		}
 	}
     global Messaging.InboundEmailResult handleInboundEmail(Messaging.InboundEmail email, Messaging.InboundEnvelope envelope) {
+    	//Put email received into instance variable.
     	emailReceived = email;
+
+    	//Put entire contents of email into instance variable.
+    	//Email_Helper will return message in plain text format.
     	fullMessage = Email_Helper.makeDescription(emailReceived);
+
+		//Instance variable newMessage should contain only the latest message.
+		//Previous messages should be after the indicator.
+		//Strip off indicator and anything following it.
     	Integer endPos = fullMessage.indexOf(endNewMessageIndicator);
     	if(endPos <= 0) {
     		newMessage = fullMessage;
@@ -25,10 +48,11 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     	else {
     		newMessage = fullMessage.substring(0, endPos - 1);
     	}
+    	
+    	
 		theCase = Email_Helper.getExistingCase(emailReceived);
 		if(theCase == null) {
 			theCase = createNewCase();
-			theCase = [select Id, CaseNumber, Description, Contact.FirstName, Contact.LastName from Case where Id=:theCase.Id];
 			Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '0');
 			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
 			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id);
@@ -54,6 +78,12 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 			}
 			else if(tagMap.keySet().contains('close')) {
 				closeCase();
+			}
+			else if(tagMap.keySet().contains('assign')) {
+				assignCase(tagMap.get('assign'));
+			}
+			else if(tagMap.keySet().contains('labor')) {
+				addHours(tagMap.get('labor'));
 			}
 		}
         Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
@@ -95,17 +125,15 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		//Set DML Options (this ensures that the auto-assignment rules and autoresponse rules get fired)
 		newCase.setOptions(Email_Helper.getDMLOptions());
 		insert newCase;
+		//Retrieve newly inserted case to get CaseNumber and Contact information
+		newCase = [select Id, CaseNumber, Description, OwnerId, Contact.FirstName, Contact.LastName, Contact.Account.Name from Case where Id=:newCase.Id];
 		return newCase;
     }
     private void openCase() {
-    	List<User> usrList = [
-    		select Id, Name, Email
-    		from User
-    		where Email = :emailReceived.fromAddress
-    	];
-    	if(usrList.size() == 1) {
+    	User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
+    	if(usr != null) {
     		theCase.Status = 'Open';
-    		theCase.OwnerId = usrList.get(0).Id;
+    		theCase.OwnerId = usr.Id;
     		update theCase;
     		if( ! String.isBlank(newMessage)) {
 				CaseComment comment = new CaseComment(CommentBody=newMessage, ParentId=theCase.Id);
@@ -136,6 +164,65 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 			notificationEmail = RIT_SupportResponseEmails.caseClosed(newMessage, emailReceived, theCase);
    		}
 		Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+    }
+    private void assignCase(String assignee) {
+    	Id ownerId;
+		Messaging.SingleEmailMessage notificationEmail;
+   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
+   		if(usr == null) {
+   			//Sender is not a user
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+   		}
+   		else if(usr.Id != theCase.OwnerId) {
+   			//Sender is not case owner
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+   		}
+   		
+   		if(notificationEmail == null) {
+	    	usr = Utilities.getUserByAlias(assignee);
+	    	if(usr != null) {
+	    		ownerId = usr.Id;
+	    	}
+	    	else {
+	    		Id queueId = Utilities.getQueueIdByName(assignee);
+	    		if(queueId != null) {
+	    			ownerId = queueId;
+	    		}
+	    	}
+   		}
+	    
+	    if(ownerId == null) {
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+	    }
+	    else {
+	    	theCase.OwnerId = ownerId;
+	    	update theCase;
+	    	notificationEmail = RIT_SupportResponseEmails.caseAssigned(newMessage, emailReceived, theCase);
+   		}
+
+		Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+    }
+    private void addHours(String hoursString) {
+ 		Messaging.SingleEmailMessage notificationEmail;
+   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
+   		if(usr == null) {
+   			//Sender is not a user
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+   		}
+   		Double newHours=0;
+   		if(hoursString.isNumeric()) {
+   			newHours = Double.valueOf(hoursString);
+   			Double existingHours = theCase.Total_Labor__c;
+   			if(existingHours == null) {
+   				existingHours = 0;
+   			}
+   			theCase.Total_Labor__c = existingHours + newHours;
+   			update theCase;
+   		}
+		else {
+			//Error - hours is not numeric
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+		}   		
     }
     
     private void addAttachments(Messaging.SingleEmailMessage message) {

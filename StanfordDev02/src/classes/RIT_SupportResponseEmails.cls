@@ -154,5 +154,52 @@ public with sharing class RIT_SupportResponseEmails {
 		returnMessage.plainTextBody = reply;
 		return returnMessage;
     }
-    		
+    public static Messaging.SingleEmailMessage caseAssigned(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
+    	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
+    	String ownerType;
+    	String reply;
+    	
+    	if(theCase.OwnerId.getSobjectType() == User.sObjectType) {
+    		ownerType = 'User';
+    	}
+    	else {
+    		ownerType = 'Queue';
+    	}
+
+		if(ownerType == 'User') {
+			User usr = [select Email from User where Id = :theCase.OwnerId];
+	    	returnMessage.setToAddresses(new String[]{usr.Email});
+	    	returnMessage.setSubject(emailReceived.subject + ' *** NEW CASE ASSIGNMENT NOTIFICATION ***');
+	    	reply =
+	    		'*** NEW CASE ASSIGNMENT NOTIFICATION ***\n\n' +
+	    		'The following case has been assigned to you.\n';
+		}
+		else {
+			Set<Id> userIds = Utilities.getUsersInQueue(theCase.OwnerId);
+			List<User> usrList = [select Email from User where Id in :userIds];
+			List<String> toAddressList = new List<String>();
+			for(User usr : usrList) {
+				toAddressList.add(usr.Email);
+			}
+			returnMessage.setToAddresses(toAddressList);
+	    	returnMessage.setSubject(emailReceived.subject + ' *** NEW QUEUE ASSIGNMENT NOTIFICATION ***');
+			String queueName = [select Name from Group where Id=:theCase.OwnerId].Name;
+	    	reply =
+	    		'*** NEW CASE ASSIGNMENT NOTIFICATION ***\n\n' +
+	    		'The following case has been assigned to the QUEUE ' + queueName + '.\n';
+		}
+		
+		reply +=
+			'Company: ' + theCase.Contact.Account.Name + '\n' +
+			'Contact Name: ' + theCase.Contact.FirstName + ' ' + theCase.Contact.LastName + '\n' +
+			'Case #: ' + theCase.CaseNumber + '\n' +
+			'Subject: ' + emailReceived.subject + '\n' +
+			'Description: \n' +
+			theCase.Description;
+			  	
+    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	returnMessage.setPlainTextBody(reply);
+    	
+    	return returnMessage;
+    }
 }

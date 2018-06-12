@@ -54,13 +54,25 @@ private class UtilitiesTest {
 		System.assert(queueUsers.contains(user1.Id));
 		System.assert(queueUsers.contains(user2.Id));
 		System.assert(queueUsers.contains(user3.Id));
+
+		queueUsers = Utilities.getUsersInQueue(queue1.Id);
+		System.assertEquals(3, queueUsers.size());
+		System.assert(queueUsers.contains(user1.Id));
+		System.assert(queueUsers.contains(user2.Id));
+		System.assert(queueUsers.contains(user3.Id));
+		
+		Id queueId = Utilities.getQueueIdByName('Queue1');
+		System.assertEquals(queue1.Id, queueId);
     }
-	@isTest
-    static void getUserByEmailTest() {
-    	User user1 = createUser('First1', 'Last1');
-    	insert user1;
-    	User user2 = Utilities.getUserByEmail(user1.Email);
-    	System.assertEquals(user1.Id, user2.Id);
+    @isTest
+    static void getUserTest() {
+		User user1 = createUser('First1', 'Last1');
+		insert user1;
+		User usr = Utilities.getUserByEmail(user1.Email);
+		System.assertEquals(user1.Id, usr.Id);
+    	
+    	usr = Utilities.getUserByAlias(usr.Alias);
+    	System.assertEquals(user1.Id, usr.Id);
     }
 	private static User createUser(String firstName, String lastName) {
 		string aliasText = '';
