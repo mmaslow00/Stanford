@@ -67,4 +67,20 @@ public with sharing class Utilities {
 		}
 		return userIds;
 	}
+	public static User getUserByEmail(String email) {
+/*
+	Method getUserByEmail
+	
+	Author: Mark Maslow - June 2018
+	
+	Input - Email address of user
+	Output - If User with email exists, User with Id and Name, otherwise, null
+*/
+		User usr;
+		List<User> userList = [select Id, Name from User where Email = :email];
+		if( ! userList.isEmpty() ) {
+			usr = userList.get(0);
+		}
+		return usr;
+	}
 }

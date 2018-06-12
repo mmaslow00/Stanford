@@ -55,6 +55,13 @@ private class UtilitiesTest {
 		System.assert(queueUsers.contains(user2.Id));
 		System.assert(queueUsers.contains(user3.Id));
     }
+	@isTest
+    static void getUserByEmailTest() {
+    	User user1 = createUser('First1', 'Last1');
+    	insert user1;
+    	User user2 = Utilities.getUserByEmail(user1.Email);
+    	System.assertEquals(user1.Id, user2.Id);
+    }
 	private static User createUser(String firstName, String lastName) {
 		string aliasText = '';
         if(FirstName != null && FirstName != '' && Lastname.length()>1){

@@ -1,10 +1,20 @@
 global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 	public static final String endNewMessageIndicator = '====== Please type any reply above this line ======';    
-	public static String supportTeamAddress = 'mmaslow00+supteam@gmail.com';
+	public static List<String> supportTeamMembers = new List<String>();
+	public static String emailHandlerAddress;
 	private Case theCase;
 	private Messaging.InboundEmail emailReceived;
 	private String fullMessage;
 	private String newMessage;
+	static {
+		RIT_Support_Information__c supportInfo = RIT_Support_Information__c.getInstance(UserInfo.getProfileId());
+		emailHandlerAddress = supportInfo.RIT_Email_Handler_Address__c;		
+		Set<Id> userIds = Utilities.getUsersInQueue(supportInfo.Support_Team_Queue__c);
+		List<User> usrList = [select Email from User where Id in :userIds];
+		for(User usr : usrList) {
+			supportTeamMembers.add(usr.Email);
+		}
+	}
     global Messaging.InboundEmailResult handleInboundEmail(Messaging.InboundEmail email, Messaging.InboundEnvelope envelope) {
     	emailReceived = email;
     	fullMessage = Email_Helper.makeDescription(emailReceived);
@@ -41,6 +51,9 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 				else {
 					openCase();	
 				}
+			}
+			else if(tagMap.keySet().contains('close')) {
+				closeCase();
 			}
 		}
         Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
@@ -108,6 +121,23 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseAlreadyOpened(newMessage, emailReceived, theCase);
 		Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
     }
+    private void closeCase() {
+		Messaging.SingleEmailMessage notificationEmail;
+   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
+   		if(usr == null) {
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+   		}
+   		else if(theCase.Status == 'Closed') {
+			notificationEmail = RIT_SupportResponseEmails.caseAlreadyClosed(newMessage, emailReceived, theCase);
+   		}
+   		else {
+   			theCase.Status = 'Closed';
+   			update theCase;
+			notificationEmail = RIT_SupportResponseEmails.caseClosed(newMessage, emailReceived, theCase);
+   		}
+		Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+    }
+    
     private void addAttachments(Messaging.SingleEmailMessage message) {
 		if(message.getFileAttachments() != null) {
 			List<Attachment>attachList = new List<Attachment>();
