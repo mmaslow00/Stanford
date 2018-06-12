@@ -147,7 +147,9 @@ public with sharing class RIT_SupportResponseEmails {
     	String reply = 
     		'Sorry!\n' + 
 			'The Email below was not delivered.\n\n' + 
-			'You can create a new ticket on our website. http://www.ticketformsitestanford.com';
+			'You can create a new ticket on our website. http://www.ticketformsitestanford.com\n\n' +
+    		'----------------------------------------\n\n' +
+    		messageReceived;
 			
 		returnMessage.plainTextBody = reply;
 		return returnMessage;
