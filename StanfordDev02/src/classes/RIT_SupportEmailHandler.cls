@@ -49,13 +49,12 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     		newMessage = fullMessage.substring(0, endPos - 1);
     	}
     	
-    	
 		theCase = Email_Helper.getExistingCase(emailReceived);
 		if(theCase == null) {
 			theCase = createNewCase();
 			Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '0');
 			Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
-			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id);
+			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id, IsPublished=true);
 			insert comment;
 			addAttachments(notificationEmail);
 			
@@ -84,6 +83,9 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 			}
 			else if(tagMap.keySet().contains('labor')) {
 				addHours(tagMap.get('labor'));
+			}
+			if( tagMap.keySet().contains('hidden') || tagMap.keySet().contains('hide') || tagMap.keySet().contains('private') ) {
+				makePrivateComment(); 
 			}
 		}
         Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
@@ -136,7 +138,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     		theCase.OwnerId = usr.Id;
     		update theCase;
     		if( ! String.isBlank(newMessage)) {
-				CaseComment comment = new CaseComment(CommentBody=newMessage, ParentId=theCase.Id);
+				CaseComment comment = new CaseComment(CommentBody=newMessage, ParentId=theCase.Id, IsPublished=true);
 				insert comment;
 				Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, '1');
 				Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
@@ -222,7 +224,23 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		else {
 			//Error - hours is not numeric
 			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+		}
+		if(notificationEmail != null) {
+			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
 		}   		
+    }
+    private void makePrivateComment() {
+ 		Messaging.SingleEmailMessage notificationEmail;
+   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
+   		if(usr == null) {
+   			//Sender is not a user
+			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
+			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+   		}
+   		else {
+			CaseComment comment = new CaseComment(CommentBody=newMessage, ParentId=theCase.Id, IsPublished=false);
+			insert comment;
+   		}
     }
     
     private void addAttachments(Messaging.SingleEmailMessage message) {
