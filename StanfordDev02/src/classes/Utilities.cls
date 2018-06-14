@@ -118,4 +118,22 @@ public with sharing class Utilities {
 		}
 		return groupId; 
 	}
+/*
+	Method isNumeric
+	
+	Input - String
+	Output - Boolean indicating if string is number.
+	
+	Regular String.isNumeric will return false if string contains decimal point.
+*/
+    public static Boolean isNumeric(String s){
+        Boolean ReturnValue;
+        try{
+            Decimal.valueOf(s);
+            ReturnValue = TRUE; 
+        } catch (Exception e) {
+            ReturnValue = FALSE;
+        }
+        return ReturnValue;
+    }
 }

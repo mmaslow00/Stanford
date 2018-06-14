@@ -74,6 +74,12 @@ private class UtilitiesTest {
     	usr = Utilities.getUserByAlias(usr.Alias);
     	System.assertEquals(user1.Id, usr.Id);
     }
+    @isTest
+    private static void isNumericTest() {
+    	System.assertEquals(true, Utilities.isNumeric('12.22'));
+    	System.assertEquals(false, Utilities.isNumeric('abc'));
+    } 
+    
 	private static User createUser(String firstName, String lastName) {
 		string aliasText = '';
         if(FirstName != null && FirstName != '' && Lastname.length()>1){

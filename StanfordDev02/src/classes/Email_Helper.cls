@@ -1,5 +1,5 @@
 public with sharing class Email_Helper {
-	private static final String tagRegex = '@([\\w-]+)+(?:(?:=|\\s?=\\s?)([\\w\\d,_-]+|\\{.*|\\[.*))?';
+	private static final String tagRegex = '@([\\w-]+)+(?:(?:=|\\s?=\\s?)([\\w\\d\\.,_-]+|\\{.*|\\[.*))?';
 
 /////////////////// UTILITY FUNCTIONS ////////////////////////
 
