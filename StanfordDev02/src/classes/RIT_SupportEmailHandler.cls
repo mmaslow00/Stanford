@@ -91,10 +91,12 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		
 		Boolean publishComment = ! (tagMap.keySet().contains('hidden') || tagMap.keySet().contains('hide') || tagMap.keySet().contains('private'));
 		
-		String newCaseComment = Email_Helper.removeTags(newMessage);
-		if( ! String.isBlank(newCaseComment)) {
-			CaseComment comment = new CaseComment(CommentBody=newCaseComment, ParentId=theCase.Id, IsPublished=publishComment);
-			insert comment;
+		if( ! inputError ) {
+			String newCaseComment = Email_Helper.removeTags(newMessage);
+			if( ! String.isBlank(newCaseComment)) {
+				CaseComment comment = new CaseComment(CommentBody=newCaseComment, ParentId=theCase.Id, IsPublished=publishComment);
+				insert comment;
+			}
 		}
 		
 		Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, caseIsNew ? '0' : '1');
