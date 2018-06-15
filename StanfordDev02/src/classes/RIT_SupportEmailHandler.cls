@@ -11,7 +11,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 	public static List<String> supportTeamMembers = new List<String>();
 	public static String emailHandlerAddress;
 
-	//Instance variables to be populated and used in various methods, to avoid having to pass them
+	//Instance variables to be populated and used in various methods, to avoid having to pass them betwen methods
 	private Case theCase;
 	private Messaging.InboundEmail emailReceived;
 	private String fullMessage;
@@ -69,12 +69,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 				}
 				else {
 					if(tagMap.keySet().contains('open')) {
-						if(theCase.Status == 'Open') {
-							notificationEmail = caseAlreadyOpened();
-						}
-						else {
-							notificationEmail = openCase();	
-						}
+						notificationEmail = openCase();	
 					}
 					else if(tagMap.keySet().contains('close')) {
 						notificationEmail = closeCase();
@@ -155,15 +150,17 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     }
     private Messaging.SingleEmailMessage openCase() {
     	Messaging.SingleEmailMessage notificationEmail;
-		theCase.Status = 'Open';
-		theCase.OwnerId = invokingUser.Id;
-		update theCase;
-		notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
+		if(theCase.Status == 'Open') {
+   			inputError = true;
+			notificationEmail = RIT_SupportResponseEmails.caseAlreadyOpened(newMessage, emailReceived, theCase);
+		}
+		else {
+			theCase.Status = 'Open';
+			theCase.OwnerId = invokingUser.Id;
+			update theCase;
+			notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
+		}
     	return notificationEmail;
-    }
-    private Messaging.SingleEmailMessage caseAlreadyOpened() {
-		Messaging.SingleEmailMessage notificationEmail = RIT_SupportResponseEmails.caseAlreadyOpened(newMessage, emailReceived, theCase);
-		return notificationEmail;
     }
     private Messaging.SingleEmailMessage closeCase() {
 		Messaging.SingleEmailMessage notificationEmail;
