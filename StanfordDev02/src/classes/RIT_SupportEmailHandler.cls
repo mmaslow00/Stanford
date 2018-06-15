@@ -16,6 +16,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 	private Messaging.InboundEmail emailReceived;
 	private String fullMessage;
 	private String newMessage;
+	private User invokingUser;
 	private Boolean inputError=false;
 
 	//Static initializer
@@ -53,41 +54,52 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		Messaging.SingleEmailMessage notificationEmail;
     	Boolean caseIsNew = false;
 		theCase = Email_Helper.getExistingCase(emailReceived);
+		Map<String, String> tagMap = Email_Helper.getTags(newMessage);
+
 		if(theCase == null) {
 			theCase = createNewCase();
-			System.debug('theCase.Description 01: ' + theCase.Description);
 			caseIsNew = true;
 			notificationEmail = RIT_SupportResponseEmails.newCase(fullMessage, emailReceived, theCase);
-			CaseComment comment = new CaseComment(CommentBody=fullMessage, ParentId=theCase.Id, IsPublished=true);
-			insert comment;
-			addAttachments(notificationEmail);
-			
 		}
 		else {
-			Map<String, String> tagMap = Email_Helper.getTags(newMessage);
-			if(tagMap.keySet().contains('open')) {
-				if(theCase.Status == 'Open') {
-					notificationEmail = caseAlreadyOpened();
+			if(tagMap.size() > 0) {
+				invokingUser = Utilities.getUserByEmail(emailReceived.fromAddress);
+				if(invokingUser == null) {
+					notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
 				}
 				else {
-					notificationEmail = openCase();	
+					if(tagMap.keySet().contains('open')) {
+						if(theCase.Status == 'Open') {
+							notificationEmail = caseAlreadyOpened();
+						}
+						else {
+							notificationEmail = openCase();	
+						}
+					}
+					else if(tagMap.keySet().contains('close')) {
+						notificationEmail = closeCase();
+					}
+					else if(tagMap.keySet().contains('assign')) {
+						notificationEmail = assignCase(tagMap.get('assign'));
+					}
+					else if(tagMap.keySet().contains('labor')) {
+						notificationEmail = addHours(tagMap.get('labor'));
+					}
 				}
 			}
-			else if(tagMap.keySet().contains('close')) {
-				notificationEmail = closeCase();
-			}
-			else if(tagMap.keySet().contains('assign')) {
-				notificationEmail = assignCase(tagMap.get('assign'));
-			}
-			else if(tagMap.keySet().contains('labor')) {
-				notificationEmail = addHours(tagMap.get('labor'));
-			}
-			else if( tagMap.keySet().contains('hidden') || tagMap.keySet().contains('hide') || tagMap.keySet().contains('private') ) {
-				notificationEmail = makePrivateComment(); 
-			}
 		}
+		
+		Boolean publishComment = ! (tagMap.keySet().contains('hidden') || tagMap.keySet().contains('hide') || tagMap.keySet().contains('private'));
+		
+		String newCaseComment = Email_Helper.removeTags(newMessage);
+		if( ! String.isBlank(newCaseComment)) {
+			CaseComment comment = new CaseComment(CommentBody=newCaseComment, ParentId=theCase.Id, IsPublished=publishComment);
+			insert comment;
+		}
+		
 		Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, caseIsNew ? '0' : '1');
 		if(notificationEmail != null) {
+			addAttachments(notificationEmail);
 			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
 		}
 		
@@ -95,8 +107,6 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
         if(Test.isRunningTest()) {
         	result.message = theCase.Id;
         }
-
-		System.debug('theCase.Description 02: ' + theCase.Description);
 
 		result.success=true;
    	    return result;		
@@ -113,8 +123,6 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
   		newCase.Notify_Contact_On_Creation__c = False;							//FALSE TO prevent looping with out-of-office replies.
 		newCase.Type = 'Other';													
 		newCase.description = fullMessage;
-		
-		System.debug('newCase.description 1: ' + newCase.description);
 		
 		//If there is an existing contact, lets associate it.  This is automatically done by the Web-to-Case and Email-To-Case 
 		//functionality, but in this custom email handler, we need to do it.
@@ -134,32 +142,21 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		//Set DML Options (this ensures that the auto-assignment rules and autoresponse rules get fired)
 		newCase.setOptions(Email_Helper.getDMLOptions());
 
-		System.debug('newCase.description 2: ' + newCase.description);
-
 		insert newCase;
 
 		//Retrieve newly inserted case to get CaseNumber and Contact information
 		newCase = [select Id, CaseNumber, Description, OwnerId, Contact.FirstName, Contact.LastName, Contact.Account.Name from Case where Id=:newCase.Id];
 
-		System.debug('newCase.description 3: ' + newCase.description);
+		System.debug('newCase.description: ' + newCase.description);
 
 		return newCase;
     }
     private Messaging.SingleEmailMessage openCase() {
     	Messaging.SingleEmailMessage notificationEmail;
-    	User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
-    	if(usr != null) {
-    		theCase.Status = 'Open';
-    		theCase.OwnerId = usr.Id;
-    		update theCase;
-    		String replyMessage = Email_Helper.removeTags(newMessage);
-    		if( ! String.isBlank(replyMessage)) {
-				CaseComment comment = new CaseComment(CommentBody=replyMessage, ParentId=theCase.Id, IsPublished=true);
-				insert comment;
-				notificationEmail = RIT_SupportResponseEmails.caseOpened(replyMessage, emailReceived, theCase);
-				addAttachments(notificationEmail);
-    		}
-    	}
+		theCase.Status = 'Open';
+		theCase.OwnerId = invokingUser.Id;
+		update theCase;
+		notificationEmail = RIT_SupportResponseEmails.caseOpened(newMessage, emailReceived, theCase);
     	return notificationEmail;
     }
     private Messaging.SingleEmailMessage caseAlreadyOpened() {
@@ -169,11 +166,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     private Messaging.SingleEmailMessage closeCase() {
 		Messaging.SingleEmailMessage notificationEmail;
    		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
-   		if(usr == null) {
-   			inputError = true;
-			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
-   		}
-   		else if(theCase.Status == 'Closed') {
+   		if(theCase.Status == 'Closed') {
    			inputError = true;
 			notificationEmail = RIT_SupportResponseEmails.caseAlreadyClosed(newMessage, emailReceived, theCase);
    		}
@@ -187,20 +180,14 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     private Messaging.SingleEmailMessage assignCase(String assignee) {
     	Id ownerId;
 		Messaging.SingleEmailMessage notificationEmail;
-   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
-   		if(usr == null) {
-   			//Sender is not a user
-   			inputError = true;
-			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
-   		}
-   		else if(usr.Id != theCase.OwnerId) {
+   		if(invokingUser.Id != theCase.OwnerId) {
    			//Sender is not case owner
    			inputError = true;
 			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
    		}
    		
    		if(notificationEmail == null) {
-	    	usr = Utilities.getUserByAlias(assignee);
+	    	User usr = Utilities.getUserByAlias(assignee);
 	    	if(usr != null) {
 	    		ownerId = usr.Id;
 	    	}
@@ -226,12 +213,6 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
     }
     private Messaging.SingleEmailMessage addHours(String hoursString) {
  		Messaging.SingleEmailMessage notificationEmail;
-   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
-   		if(usr == null) {
-   			//Sender is not a user
-   			inputError = true;
-			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
-   		}
    		Double newHours=0;
    		if(Utilities.isNumeric(hoursString)) {
    			newHours = Decimal.valueOf(hoursString);
@@ -248,20 +229,6 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
 		}
 		return notificationEmail;  		
-    }
-    private Messaging.SingleEmailMessage makePrivateComment() {
- 		Messaging.SingleEmailMessage notificationEmail;
-   		User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
-   		if(usr == null) {
-   			//Sender is not a user
-   			inputError = true;
-			notificationEmail = RIT_SupportResponseEmails.bounce(newMessage, emailReceived);
-   		}
-   		else {
-			CaseComment comment = new CaseComment(CommentBody=Email_Helper.removeTags(newMessage), ParentId=theCase.Id, IsPublished=false);
-			insert comment;
-   		}
-   		return notificationEmail;
     }
     
     private void addAttachments(Messaging.SingleEmailMessage message) {
