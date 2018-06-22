@@ -2,7 +2,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage newCase(String messageReceived, Messaging.InboundEmail emailReceived, Case newCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(RIT_SupportEmailHandler.supportTeamMembers);
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject(emailReceived.subject + ' - ' + newCase.CaseNumber);
     	
 		String reply = RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' +
@@ -41,7 +41,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage caseOpened(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{theCase.Contact.Email});
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject(emailReceived.subject);
     	
 		String reply = RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' +
@@ -76,7 +76,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage caseAlreadyOpened(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject(theCase.CaseNumber + ' Case Already Taken By ' + theCase.Owner.Name);
     	
     	User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
@@ -98,7 +98,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage caseAlreadyClosed(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject(theCase.CaseNumber + ' Case Already Closed By ' + theCase.Owner.Name);
     	
     	User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
@@ -120,7 +120,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage caseClosed(String messageReceived, Messaging.InboundEmail emailReceived, Case theCase) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject('RE: ' + theCase.CaseNumber + ' - Case Closed');
     	
     	User usr = Utilities.getUserByEmail(emailReceived.fromAddress);
@@ -141,7 +141,7 @@ public with sharing class RIT_SupportResponseEmails {
     public static Messaging.SingleEmailMessage bounce(String messageReceived, Messaging.InboundEmail emailReceived) {
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
     	returnMessage.setToAddresses(new String[]{emailReceived.fromAddress});
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setSubject(emailReceived.subject);
     	
     	String reply = 
@@ -197,8 +197,43 @@ public with sharing class RIT_SupportResponseEmails {
 			'Description: \n' +
 			theCase.Description;
 			  	
-    	returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+    	//returnMessage.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
     	returnMessage.setPlainTextBody(reply);
+    	
+    	return returnMessage;
+    }
+    public static Messaging.SingleEmailMessage forwardComments(String comments, Messaging.InboundEmail emailReceived, Case theCase, Boolean publish) {
+    	System.debug('publish: ' + publish);
+    	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
+		List<String> toAddressList = new List<String>();
+    	if(theCase.Contact.Email == emailReceived.fromAddress) {
+	    	if(theCase.OwnerId.getSobjectType() == User.sObjectType) {
+				User usr = [select Email from User where Id = :theCase.OwnerId];
+				toAddressList.add(usr.Email);
+	    	}
+	    	else {
+				Set<Id> userIds = Utilities.getUsersInQueue(theCase.OwnerId);
+				List<User> usrList = [select Email from User where Id in :userIds];
+				for(User usr : usrList) {
+					toAddressList.add(usr.Email);
+				}
+	    	}
+    	}
+    	else if(publish) {
+			toAddressList.add(theCase.Contact.Email);    		
+    	}
+    	else {
+    		System.debug('returning null');
+    		return null;
+    	}
+    	returnMessage.setToAddresses(toAddressList);
+    	String subject = emailReceived.subject;
+    	String newCaseCommentIndicator = ' *** NEW CASE COMMENT ***';
+    	if(subject.indexOf(newCaseCommentIndicator) < 1) {
+    		subject += newCaseCommentIndicator;
+    	}
+    	returnMessage.setSubject(subject);
+    	returnMessage.setPlainTextBody(RIT_SupportEmailHandler.endNewMessageIndicator + '\n\n' + comments);
     	
     	return returnMessage;
     }

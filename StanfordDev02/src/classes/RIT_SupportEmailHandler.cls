@@ -85,27 +85,33 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 		}
 		
 		Boolean publishComment = ! (tagMap.keySet().contains('hidden') || tagMap.keySet().contains('hide') || tagMap.keySet().contains('private'));
-		
+
 		if( ! inputError ) {
 			String newCaseComment = Email_Helper.removeTags(newMessage);
 			if( ! String.isBlank(newCaseComment)) {
 				CaseComment comment = new CaseComment(CommentBody=newCaseComment, ParentId=theCase.Id, IsPublished=publishComment);
 				insert comment;
+				if(notificationEmail == null) {
+					notificationEmail = RIT_SupportResponseEmails.forwardComments(newCaseComment, emailReceived, theCase, publishComment);
+				}
 			}
 		}
-		
+
 		Email_Helper.copyEmailtoCase(emailReceived, theCase.Id, caseIsNew ? '0' : '1');
+		
 		if(notificationEmail != null) {
 			addAttachments(notificationEmail);
-			Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
+	    	notificationEmail.setReplyTo(RIT_SupportEmailHandler.emailHandlerAddress);
+			List<Messaging.SendEmailResult> rslt = Messaging.sendEmail(new Messaging.SingleEmailMessage[] { notificationEmail });
 		}
-		
+
         Messaging.InboundEmailResult result = new Messaging.InboundEmailresult();
         if(Test.isRunningTest()) {
         	result.message = theCase.Id;
         }
 
 		result.success=true;
+		
    	    return result;		
     }
     
@@ -143,8 +149,6 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 
 		//Retrieve newly inserted case to get CaseNumber and Contact information
 		newCase = [select Id, CaseNumber, Description, OwnerId, Contact.FirstName, Contact.LastName, Contact.Account.Name from Case where Id=:newCase.Id];
-
-		System.debug('newCase.description: ' + newCase.description);
 
 		return newCase;
     }

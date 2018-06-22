@@ -139,8 +139,8 @@ public with sharing class Email_Helper {
     	//Apply the assignment rules to this new Case (otherwise the owner would default to the script user, who is me right now)
 		Database.DMLOptions dmo = new Database.DMLOptions();
 		dmo.assignmentRuleHeader.useDefaultRule = true;
-		dmo.EmailHeader.triggerAutoResponseEmail = true;
-		dmo.EmailHeader.triggerUserEmail = true;		
+		//dmo.EmailHeader.triggerAutoResponseEmail = true;
+		//dmo.EmailHeader.triggerUserEmail = true;		
 		return dmo;
 	}
 
