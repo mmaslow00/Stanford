@@ -203,7 +203,6 @@ public with sharing class RIT_SupportResponseEmails {
     	return returnMessage;
     }
     public static Messaging.SingleEmailMessage forwardComments(String comments, Messaging.InboundEmail emailReceived, Case theCase, Boolean publish) {
-    	System.debug('publish: ' + publish);
     	Messaging.SingleEmailMessage returnMessage = new Messaging.SingleEmailMessage();
 		List<String> toAddressList = new List<String>();
     	if(theCase.Contact.Email == emailReceived.fromAddress) {
@@ -223,7 +222,6 @@ public with sharing class RIT_SupportResponseEmails {
 			toAddressList.add(theCase.Contact.Email);    		
     	}
     	else {
-    		System.debug('returning null');
     		return null;
     	}
     	returnMessage.setToAddresses(toAddressList);

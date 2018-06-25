@@ -318,7 +318,11 @@ public with sharing class Email_Helper {
 		Pattern tagPattern = Pattern.compile(tagRegex); 
 		Matcher myMatcher = tagPattern.matcher(message);
 		while(myMatcher.find()) {
-			returnMap.put(myMatcher.group(1).toLowerCase(), myMatcher.group(2));
+			String tagName = myMatcher.group(1).toLowerCase();
+			if(RIT_SupportEmailHandler.validTags.contains(tagName)) {
+				String tagValue = myMatcher.group(2);
+				returnMap.put(tagName, tagValue);
+			}
 		}
 		return returnMap;    	
     }
