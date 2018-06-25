@@ -10,7 +10,7 @@ global class RIT_SupportEmailHandler implements Messaging.InboundEmailHandler {
 	public static final String endNewMessageIndicator = '====== Please type any reply above this line ======';    
 	public static List<String> supportTeamMembers = new List<String>();
 	public static String emailHandlerAddress;
-	public static Set<String> validTags = new Set<String>{'open','close','assign','labor'};
+	public static Set<String> validTags = new Set<String>{'open','close','assign','labor','hidden','hide','private'};
 
 	//Instance variables to be populated and used in various methods, to avoid having to pass them betwen methods
 	private Case theCase;
